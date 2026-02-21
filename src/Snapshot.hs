@@ -66,7 +66,7 @@ snapshotsJsonUrl = "https://www.stackage.org/download/snapshots.json"
 -- | Fetch snapshots.json, cached for 60 minutes
 getSnapshotsMap :: IO SnapshotsMap
 getSnapshotsMap =
-  getCachedJSON "cabal-stackage" "snapshots.json" snapshotsJsonUrl 60
+  getCachedJSON "stackage-snapshots" "snapshots.json" snapshotsJsonUrl 200
 
 -- | Resolve a snapshot spec to a pinned snapshot ID (e.g. "lts-24.31").
 -- Exact specs (LtsExact, NightlyDate) are returned directly without a lookup.
