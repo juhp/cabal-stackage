@@ -50,7 +50,7 @@ parseConfigLine cfg line =
        (key, ':':rest) ->
          let val = trim rest
          in case trim key of
-              "snapshot" -> cfg { pcSnapshot = parseSnapshotSpec val }
+              "resolver" -> cfg { pcSnapshot = parseSnapshotSpec val }
               "newest"   -> cfg { pcNewest   = parseSnapshotSpec val }
               "oldest"   -> cfg { pcOldest   = parseSnapshotSpec val }
               _          -> cfg
@@ -86,7 +86,7 @@ writeProjectSnapshot spec = do
 globalSnapshotFile :: IO FilePath
 globalSnapshotFile = do
   dir <- getXdgDirectory XdgConfig "cabal-stackage"
-  return $ dir </> "snapshot"
+  return $ dir </> "resolver"
 
 readSnapshotFile :: FilePath -> IO (Maybe SnapshotSpec)
 readSnapshotFile path = do

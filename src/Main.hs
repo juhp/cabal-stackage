@@ -44,7 +44,7 @@ main = do
               passthroughCmd "clean" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
           , Subcommand "refresh"   "Force re-download of snapshot config" $
               refreshCmd <$> snapshotOpt
-          , Subcommand "snapshot"  "Show or set the current snapshot" $
+          , Subcommand "snapshot"  "Show or set the current snapshot resolver" $
               snapshotCmd <$> optional (strArg "SPEC")
           , Subcommand "build-all" "Build against multiple snapshots (stack-all equivalent)" $
               buildAllCmd <$> debugOpt <*> newestOpt <*> oldestOpt <*> many (strArg "SPEC")
@@ -56,7 +56,7 @@ main = do
         snapshotOpt :: Parser (Maybe SnapshotSpec)
         snapshotOpt =
           optional $
-            optionWith (maybeReader parseSnapshotSpec) 's' "snapshot" "SPEC"
+            optionWith (maybeReader parseSnapshotSpec) 's' "resolver" "SPEC"
               "Stackage snapshot (e.g. lts, lts-24, lts-24.31, nightly)"
 
         newestOpt :: Parser (Maybe SnapshotSpec)
