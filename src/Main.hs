@@ -1,11 +1,16 @@
 module Main (main) where
 
-import           Control.Monad    (forM_, when)
+import           Control.Monad    (filterM, forM_, when)
+import           Data.List        (isSuffixOf)
+import           Data.Maybe       (listToMaybe)
 import qualified Data.Map.Strict  as Map
 import qualified Data.Text        as T
 import           SimpleCmd        (cmd_, error', needProgram, warning)
 import           SimpleCmdArgs
-import           System.Directory (findExecutable, withCurrentDirectory)
+import           System.Directory (doesDirectoryExist, doesFileExist,
+                                   findExecutable, getHomeDirectory,
+                                   listDirectory, withCurrentDirectory)
+import           System.FilePath  ((</>))
 
 import           Config
 import           Project
@@ -69,7 +74,8 @@ setupProject debug mSpec = do
   compilerArgs <- resolveCompiler debug configPath
   return (projectFile, compilerArgs)
 
--- | Look up the compiler named in the cabal.config on PATH.
+-- | Look up the compiler named in the cabal.config on PATH,
+-- falling back to Stack's program directory if not found.
 resolveCompiler :: Bool -> FilePath -> IO [String]
 resolveCompiler debug configPath = do
   mCompiler <- readCompilerFromConfig configPath
@@ -81,9 +87,40 @@ resolveCompiler debug configPath = do
         Just path -> do
           when debug $ warning $ "Compiler: " ++ path
           return ["-w", path]
-        Nothing   -> do
-          warning $ compiler ++ " not found on PATH"
-          return []
+        Nothing -> do
+          mStackPath <- findStackGhc compiler
+          case mStackPath of
+            Just path -> do
+              when debug $ warning $ "Compiler (stack): " ++ path
+              return ["-w", path]
+            Nothing -> do
+              warning $ compiler ++ " not found on PATH or in ~/.stack/programs"
+              return []
+
+-- | Search for a GHC binary in Stack's program directory.
+-- Stack installs GHCs at ~/.stack/programs/<arch>/<variant>/bin/ghc,
+-- where <variant> may be "ghc-X.Y.Z" or "ghc-tinfo6-X.Y.Z" etc.
+-- We match by version suffix to handle all naming variants.
+findStackGhc :: String -> IO (Maybe FilePath)
+findStackGhc compiler = do
+  home <- getHomeDirectory
+  let stackPrograms = home </> ".stack" </> "programs"
+  exists <- doesDirectoryExist stackPrograms
+  if not exists
+    then return Nothing
+    else do
+      archs <- listDirectory stackPrograms
+      -- compiler is e.g. "ghc-9.10.3"; match dirs ending with "-9.10.3"
+      -- to cover variants like "ghc-tinfo6-9.10.3"
+      let version = dropWhile (/= '-') compiler  -- "-9.10.3"
+          matchesVersion d = version `isSuffixOf` d
+      ghcDirs <- concat <$> mapM (\arch -> do
+        entries <- listDirectory (stackPrograms </> arch)
+        return [ stackPrograms </> arch </> d
+               | d <- entries, matchesVersion d ]
+        ) archs
+      listToMaybe <$> filterM doesFileExist
+        [ dir </> "bin" </> "ghc" | dir <- ghcDirs ]
 
 passthroughCmd :: String -> Bool -> Maybe SnapshotSpec -> [String] -> IO ()
 passthroughCmd cabalCmd debug mSpec extraArgs = do
