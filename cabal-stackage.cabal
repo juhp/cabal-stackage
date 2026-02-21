@@ -1,6 +1,6 @@
 cabal-version:      2.2
 name:               cabal-stackage
-version:            0.1.0
+version:            0.1
 synopsis:           Stack-like cabal-install wrapper using Stackage snapshots
 description:
   cabal-stackage wraps cabal-install to provide a Stack-like build experience
@@ -11,7 +11,7 @@ license-file:       COPYING
 author:             Jens Petersen
 maintainer:         juhpetersen@gmail.com
 build-type:         Simple
--- extra-doc-files:    ChangeLog.md
+extra-doc-files:    ChangeLog.md
 
 executable cabal-stackage
   main-is:          Main.hs
