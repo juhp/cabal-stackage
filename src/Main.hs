@@ -107,10 +107,11 @@ buildAllCmd specStrs = do
     parseSpec s =
       maybe (error' $ "Invalid snapshot spec: " ++ s) return (parseSnapshotSpec s)
 
--- | All LTS major versions present in snapshots.json, starting from lts-16.
+-- | Nightly followed by LTS majors in descending order down to lts-16.
 defaultLtsSpecs :: SnapshotsMap -> [SnapshotSpec]
 defaultLtsSpecs snapshots =
+  NightlyLatest :
   [ LtsMajor n
-  | n <- [16..64]
+  | n <- [64,63..16]
   , Map.member (T.pack $ "lts-" ++ show n) snapshots
   ]
