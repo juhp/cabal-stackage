@@ -13,9 +13,8 @@ module Snapshot
 import           Control.Monad              (unless)
 import           Data.Aeson                 ()
 import qualified Data.ByteString            as B
-import           Data.Char                  (isSpace)
 import           Control.Applicative        ((<|>))
-import           Data.List                  (stripPrefix)
+import           Data.List                  (isPrefixOf, stripPrefix)
 import           Data.Map.Strict            (Map)
 import           Data.Maybe                 (listToMaybe)
 import qualified Data.Map.Strict            as Map
@@ -110,11 +109,8 @@ ensureCachedConfig snapId = do
 readCompilerFromConfig :: FilePath -> IO (Maybe String)
 readCompilerFromConfig configPath = do
   ls <- lines <$> readFile configPath
-  return $ listToMaybe
-    [ dropWhile isSpace rest
-    | l <- ls
-    , Just rest <- [stripPrefix "with-compiler:" l]
-    ]
+  let mwithcompiler = listToMaybe $ dropWhile ("--" `isPrefixOf`) ls
+  return $ stripPrefix "with-compiler: " =<< mwithcompiler
 
 -- | Re-download the cabal.config for a pinned snapshot ID unconditionally.
 forceRefreshConfig :: String -> IO FilePath
