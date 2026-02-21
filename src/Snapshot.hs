@@ -14,6 +14,7 @@ import           Control.Monad              (unless)
 import           Data.Aeson                 ()
 import qualified Data.ByteString            as B
 import           Data.Char                  (isSpace)
+import           Control.Applicative        ((<|>))
 import           Data.List                  (stripPrefix)
 import           Data.Map.Strict            (Map)
 import           Data.Maybe                 (listToMaybe)
@@ -41,7 +42,7 @@ parseSnapshotSpec :: String -> Maybe SnapshotSpec
 parseSnapshotSpec "lts"     = Just LtsLatest
 parseSnapshotSpec "nightly" = Just NightlyLatest
 parseSnapshotSpec s =
-  case stripPrefix "lts-" s of
+  case stripPrefix "lts-" s <|> stripPrefix "lts" s of
     Just rest ->
       case break (== '.') rest of
         (major, "")        -> LtsMajor <$> readMaybe major
