@@ -11,7 +11,6 @@ module Snapshot
   ) where
 
 import           Control.Monad              (unless)
-import           Data.Aeson                 ()
 import qualified Data.ByteString            as B
 import           Control.Applicative        ((<|>))
 import           Data.List                  (isPrefixOf, stripPrefix)

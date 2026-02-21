@@ -21,7 +21,6 @@ executable cabal-stackage
     Snapshot
   build-depends:
       base             < 5
-    , aeson
     , bytestring
     , cached-json-file
     , containers
