@@ -3,9 +3,9 @@ module Main (main) where
 import           Control.Monad    (forM_)
 import qualified Data.Map.Strict  as Map
 import qualified Data.Text        as T
-import           SimpleCmd        (cmd_, error', needProgram)
+import           SimpleCmd        (cmd_, error', needProgram, warning)
 import           SimpleCmdArgs
-import           System.Directory (withCurrentDirectory)
+import           System.Directory (findExecutable, withCurrentDirectory)
 
 import           Config
 import           Project
@@ -51,19 +51,36 @@ main = do
               "Stackage snapshot (e.g. lts, lts-24, lts-24.31, nightly)"
 
 -- | Resolve snapshot, ensure config is cached, generate project file.
--- Returns (projectRoot, projectFile).
-setupProject :: Maybe SnapshotSpec -> IO FilePath
+-- Returns (projectFile, compilerArgs) where compilerArgs is ["-w", path]
+-- if the snapshot's GHC is found on PATH, otherwise [].
+setupProject :: Maybe SnapshotSpec -> IO (FilePath, [String])
 setupProject mSpec = do
-  spec        <- effectiveSnapshot mSpec
-  snapshots   <- getSnapshotsMap
-  pinnedId    <- either error' return $ resolveSnapshot snapshots spec
-  configPath  <- ensureCachedConfig pinnedId
-  generateProjectFile configPath
+  spec          <- effectiveSnapshot mSpec
+  snapshots     <- getSnapshotsMap
+  pinnedId      <- either error' return $ resolveSnapshot snapshots spec
+  configPath    <- ensureCachedConfig pinnedId
+  projectFile   <- generateProjectFile configPath
+  compilerArgs  <- resolveCompiler configPath
+  return (projectFile, compilerArgs)
+
+-- | Look up the compiler named in the cabal.config on PATH.
+resolveCompiler :: FilePath -> IO [String]
+resolveCompiler configPath = do
+  mCompiler <- readCompilerFromConfig configPath
+  case mCompiler of
+    Nothing       -> return []
+    Just compiler -> do
+      mPath <- findExecutable compiler
+      case mPath of
+        Just path -> return ["-w", path]
+        Nothing   -> do
+          warning $ compiler ++ " not found on PATH"
+          return []
 
 passthroughCmd :: String -> Maybe SnapshotSpec -> [String] -> IO ()
 passthroughCmd cabalCmd mSpec extraArgs = do
-  projectFile <- setupProject mSpec
-  runCabal projectFile (cabalCmd : extraArgs)
+  (projectFile, compilerArgs) <- setupProject mSpec
+  runCabal projectFile (compilerArgs ++ cabalCmd : extraArgs)
 
 refreshCmd :: Maybe SnapshotSpec -> IO ()
 refreshCmd mSpec = do
@@ -100,9 +117,10 @@ buildAllCmd specStrs = do
       Left err -> do
         error' err
       Right pinnedId -> do
-        configPath  <- ensureCachedConfig pinnedId
-        projectFile <- generateProjectFile configPath
-        cmd_ "cabal" ["--project-file=" ++ projectFile, "build"]
+        configPath    <- ensureCachedConfig pinnedId
+        projectFile   <- generateProjectFile configPath
+        compilerArgs  <- resolveCompiler configPath
+        cmd_ "cabal" (compilerArgs ++ ["--project-file=" ++ projectFile, "build"])
   where
     parseSpec s =
       maybe (error' $ "Invalid snapshot spec: " ++ s) return (parseSnapshotSpec s)

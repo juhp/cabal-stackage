@@ -7,13 +7,16 @@ module Snapshot
   , resolveSnapshot
   , ensureCachedConfig
   , forceRefreshConfig
+  , readCompilerFromConfig
   ) where
 
 import           Control.Monad              (unless)
 import           Data.Aeson                 ()
 import qualified Data.ByteString            as B
+import           Data.Char                  (isSpace)
 import           Data.List                  (stripPrefix)
 import           Data.Map.Strict            (Map)
+import           Data.Maybe                 (listToMaybe)
 import qualified Data.Map.Strict            as Map
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
@@ -100,6 +103,17 @@ ensureCachedConfig snapId = do
   exists <- doesFileExist dest
   unless exists $ downloadConfig snapId dest
   return dest
+
+-- | Read the 'with-compiler:' value from a cached cabal.config,
+-- e.g. "ghc-9.10.3".
+readCompilerFromConfig :: FilePath -> IO (Maybe String)
+readCompilerFromConfig configPath = do
+  ls <- lines <$> readFile configPath
+  return $ listToMaybe
+    [ dropWhile isSpace rest
+    | l <- ls
+    , Just rest <- [stripPrefix "with-compiler:" l]
+    ]
 
 -- | Re-download the cabal.config for a pinned snapshot ID unconditionally.
 forceRefreshConfig :: String -> IO FilePath
