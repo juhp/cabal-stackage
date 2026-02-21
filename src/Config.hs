@@ -9,7 +9,7 @@ module Config
   ) where
 
 import           Data.List.Extra  (trim)
-import           Data.Maybe       (fromMaybe)
+import           Data.Maybe       (fromMaybe, listToMaybe)
 import           System.Directory (XdgDirectory (..), doesFileExist,
                                    getXdgDirectory)
 import           System.FilePath  ((</>))
@@ -44,7 +44,7 @@ emptyProjectConfig = ProjectConfig Nothing Nothing Nothing
 parseConfigLine :: ProjectConfig -> String -> ProjectConfig
 parseConfigLine cfg line =
   let s = trim line
-  in if null s || head s == '#'
+  in if null s || listToMaybe s == Just '#'
      then cfg
      else case break (== ':') s of
        (key, ':':rest) ->
