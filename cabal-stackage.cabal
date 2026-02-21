@@ -26,6 +26,7 @@ executable cabal-stackage
     , cached-json-file
     , containers
     , directory
+    , extra
     , filepath
     , http-conduit
     , simple-cmd       >= 0.2

@@ -12,7 +12,8 @@ import           System.Directory (doesDirectoryExist, doesFileExist,
                                    listDirectory, withCurrentDirectory)
 import           System.FilePath  ((</>))
 
-import           Config
+import           Config   (ProjectConfig (..), effectiveSnapshot, readProjectConfig,
+                           writeProjectSnapshot)
 import           Project
 import           Snapshot
 
@@ -46,7 +47,7 @@ main = do
           , Subcommand "snapshot"  "Show or set the current snapshot" $
               snapshotCmd <$> optional (strArg "SPEC")
           , Subcommand "build-all" "Build against multiple snapshots (stack-all equivalent)" $
-              buildAllCmd <$> debugOpt <*> many (strArg "SPEC")
+              buildAllCmd <$> debugOpt <*> newestOpt <*> oldestOpt <*> many (strArg "SPEC")
           ]
       where
         debugOpt :: Parser Bool
@@ -57,6 +58,18 @@ main = do
           optional $
             optionWith (maybeReader parseSnapshotSpec) 's' "snapshot" "SPEC"
               "Stackage snapshot (e.g. lts, lts-24, lts-24.31, nightly)"
+
+        newestOpt :: Parser (Maybe SnapshotSpec)
+        newestOpt =
+          optional $
+            optionWith (maybeReader parseSnapshotSpec) 'n' "newest" "SPEC"
+              "Newest LTS major for build-all (e.g. lts-24)"
+
+        oldestOpt :: Parser (Maybe SnapshotSpec)
+        oldestOpt =
+          optional $
+            optionWith (maybeReader parseSnapshotSpec) 'o' "oldest" "SPEC"
+              "Oldest LTS major for build-all (e.g. lts-21)"
 
 -- | Resolve snapshot, ensure config is cached, generate project file.
 -- Returns (projectFile, compilerArgs) where compilerArgs is ["-w", path]
@@ -152,11 +165,15 @@ snapshotCmd (Just specStr) = do
       writeProjectSnapshot spec
       putStrLn $ "Snapshot set to: " ++ specStr ++ " (saved to .cabal-stackage)"
 
-buildAllCmd :: Bool -> [String] -> IO ()
-buildAllCmd debug specStrs = do
+buildAllCmd :: Bool -> Maybe SnapshotSpec -> Maybe SnapshotSpec -> [String] -> IO ()
+buildAllCmd debug mNewest mOldest specStrs = do
   snapshots <- getSnapshotsMap
   specs <- if null specStrs
-    then return (defaultLtsSpecs snapshots)
+    then do
+      cfg <- readProjectConfig
+      let newest = mNewest <|> pcNewest cfg
+          oldest = mOldest <|> pcOldest cfg
+      return (applyBounds newest oldest (defaultLtsSpecs snapshots))
     else mapM parseSpec specStrs
   forM_ specs $ \spec -> do
     let specStr = T.unpack (renderSnapshotSpec spec)
@@ -174,6 +191,22 @@ buildAllCmd debug specStrs = do
   where
     parseSpec s =
       maybe (error' $ "Invalid snapshot spec: " ++ s) return (parseSnapshotSpec s)
+
+-- | Filter a spec list to those within the given newest/oldest LTS major bounds.
+-- NightlyLatest is always kept regardless of bounds.
+-- Bounds are extracted from any SnapshotSpec carrying an LTS major number.
+applyBounds :: Maybe SnapshotSpec -> Maybe SnapshotSpec -> [SnapshotSpec] -> [SnapshotSpec]
+applyBounds mNewest mOldest = filter inRange
+  where
+    majorOf (LtsMajor n)   = Just n
+    majorOf (LtsExact n _) = Just n
+    majorOf _              = Nothing
+    newestN = majorOf =<< mNewest
+    oldestN = majorOf =<< mOldest
+    inRange NightlyLatest = True
+    inRange (LtsMajor n)  = maybe True (n <=) newestN
+                          && maybe True (n >=) oldestN
+    inRange _             = True
 
 -- | Nightly followed by LTS majors in descending order down to lts-16.
 defaultLtsSpecs :: SnapshotsMap -> [SnapshotSpec]
