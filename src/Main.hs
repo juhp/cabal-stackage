@@ -99,7 +99,7 @@ resolveCompiler debug configPath = do
       case mPath of
         Just path -> do
           when debug $ warning $ "Compiler: " ++ path
-          return ["-w", path]
+          return ["-w", compiler]
         Nothing -> do
           mStackPath <- findStackGhc compiler
           case mStackPath of
