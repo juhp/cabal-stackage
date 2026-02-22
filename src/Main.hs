@@ -90,33 +90,39 @@ setupProject debug mSpec = do
   when debug $ warning $ "Snapshot: " ++ T.unpack (renderSnapshotSpec spec) ++ " -> " ++ pinnedId
   configPath   <- ensureCachedConfig pinnedId
   when debug $ warning $ "Config: " ++ configPath
-  projectFile  <- generateProjectFile configPath userConstraints
+  (mCompiler, wArgs) <- resolveCompiler debug configPath
+  projectFile  <- generateProjectFile configPath mCompiler userConstraints
   when debug $ warning $ "Project file: " ++ projectFile
-  compilerArgs <- resolveCompiler debug configPath
+  -- When inlining constraints, with-compiler: in the project file handles the
+  -- compiler; -w is only needed for the Stack fallback in the import path.
+  let compilerArgs = if null userConstraints then wArgs else []
   return (projectFile, compilerArgs)
 
 -- | Look up the compiler named in the cabal.config on PATH,
 -- falling back to Stack's program directory if not found.
-resolveCompiler :: Bool -> FilePath -> IO [String]
+-- Returns (compiler-spec, w-args) where:
+--   compiler-spec is the name or full path for use in with-compiler:
+--   w-args is ["-w", path] only for the Stack fallback (empty otherwise)
+resolveCompiler :: Bool -> FilePath -> IO (Maybe String, [String])
 resolveCompiler debug configPath = do
   mCompiler <- readCompilerFromConfig configPath
   case mCompiler of
-    Nothing       -> return []
+    Nothing       -> return (Nothing, [])
     Just compiler -> do
       mPath <- findExecutable compiler
       case mPath of
         Just path -> do
           when debug $ warning $ "Compiler: " ++ path
-          return ["-w", compiler]
+          return (Just compiler, [])
         Nothing -> do
           mStackPath <- findStackGhc compiler
           case mStackPath of
             Just path -> do
               when debug $ warning $ "Compiler (stack): " ++ path
-              return ["-w", path]
+              return (Just path, ["-w", path])
             Nothing -> do
               warning $ compiler ++ " not found on PATH or in ~/.stack/programs"
-              return []
+              return (Just compiler, [])
 
 -- | Search for a GHC binary in Stack's program directory.
 -- Stack installs GHCs at ~/.stack/programs/<arch>/<variant>/bin/ghc,
@@ -196,9 +202,10 @@ buildAllCmd debug mNewest mOldest specStrs = do
       Left err -> error' err
       Right pinnedId -> do
         configPath   <- ensureCachedConfig pinnedId
-        projectFile  <- generateProjectFile configPath userConstraints
-        compilerArgs <- resolveCompiler debug configPath
-        let projectArg = "--project-file=" ++ projectFile
+        (mCompiler, wArgs) <- resolveCompiler debug configPath
+        projectFile  <- generateProjectFile configPath mCompiler userConstraints
+        let compilerArgs = if null userConstraints then wArgs else []
+            projectArg = "--project-file=" ++ projectFile
             allArgs = projectArg : "build" : compilerArgs
         when debug $ warning $ "cabal " ++ unwords allArgs
         cmd_ "cabal" allArgs
