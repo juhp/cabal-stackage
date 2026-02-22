@@ -38,6 +38,27 @@ data SnapshotSpec
   | NightlyDate String
   deriving (Show, Eq)
 
+instance Ord SnapshotSpec where
+  compare s1 s2 =
+    case (s1,s2) of
+      (NightlyLatest,NightlyLatest) -> EQ
+      (NightlyLatest,_) -> GT
+      (_,NightlyLatest) -> LT
+      (NightlyDate d1,NightlyDate d2) -> compare d1 d2
+      (NightlyDate _, _) -> GT
+      (_, NightlyDate _) -> LT
+      (LtsLatest,LtsLatest) -> EQ
+      (LtsLatest,_) -> GT
+      (_,LtsLatest) -> LT
+      (LtsMajor m, LtsMajor n) -> compare m n
+      (LtsMajor _, _) -> GT
+      (_, LtsMajor _) -> LT
+      (LtsExact m1 n1, LtsExact m2 n2) ->
+        let cmp = compare m1 m2
+        in if cmp == EQ
+           then compare n1 n2
+           else cmp
+
 parseSnapshotSpec :: String -> Maybe SnapshotSpec
 parseSnapshotSpec "lts"     = Just LtsLatest
 parseSnapshotSpec "nightly" = Just NightlyLatest

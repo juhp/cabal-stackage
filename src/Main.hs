@@ -208,20 +208,12 @@ buildAllCmd debug mNewest mOldest specStrs = do
       maybe (error' $ "Invalid snapshot spec: " ++ s) return (parseSnapshotSpec s)
 
 -- | Filter a spec list to those within the given newest/oldest LTS major bounds.
--- NightlyLatest is always kept regardless of bounds.
 -- Bounds are extracted from any SnapshotSpec carrying an LTS major number.
 applyBounds :: Maybe SnapshotSpec -> Maybe SnapshotSpec -> [SnapshotSpec] -> [SnapshotSpec]
 applyBounds mNewest mOldest = filter inRange
   where
-    majorOf (LtsMajor n)   = Just n
-    majorOf (LtsExact n _) = Just n
-    majorOf _              = Nothing
-    newestN = majorOf =<< mNewest
-    oldestN = majorOf =<< mOldest
-    inRange NightlyLatest = True
-    inRange (LtsMajor n)  = maybe True (n <=) newestN
-                          && maybe True (n >=) oldestN
-    inRange _             = True
+    inRange spec =
+      maybe True (spec <=) mNewest && maybe True (spec >=) mOldest
 
 -- | Nightly followed by LTS majors in descending order down to lts-16.
 defaultLtsSpecs :: SnapshotsMap -> [SnapshotSpec]
