@@ -9,7 +9,8 @@ import           System.Directory (doesFileExist, getCurrentDirectory,
 import           System.FilePath  (takeDirectory, takeExtension, (</>))
 import           SimpleCmd        (cmd_)
 
-import           Snapshot         (constraintPkgName, readConfigConstraints)
+import           Snapshot         (constraintPkgName, readCompilerFromConfig,
+                                   readConfigConstraints)
 
 stackageProjectFile :: String
 stackageProjectFile = "cabal.project.stackage"
@@ -49,10 +50,12 @@ generateProjectFile configPath userConstraints = do
   body <- if null userConstraints
     then return [ "import: " ++ configPath ]
     else do
+      mCompiler       <- readCompilerFromConfig configPath
       snapConstraints <- readConfigConstraints configPath
       let overridePkgs = map constraintPkgName userConstraints
           filtered     = filter (\c -> constraintPkgName c `notElem` overridePkgs) snapConstraints
-      return $ renderConstraintsBlock (filtered ++ userConstraints)
+          compilerLine = [ "with-compiler: " ++ c | Just c <- [mCompiler] ]
+      return $ compilerLine ++ renderConstraintsBlock (filtered ++ userConstraints)
   writeFile stackageProjectFile $ unlines (header ++ body)
   return stackageProjectFile
 
