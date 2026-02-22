@@ -8,6 +8,8 @@ module Snapshot
   , ensureCachedConfig
   , forceRefreshConfig
   , readCompilerFromConfig
+  , constraintPkgName
+  , readConfigConstraints
   ) where
 
 import           Control.Monad              (unless)
@@ -119,3 +121,27 @@ forceRefreshConfig snapId = do
   let dest = dir </> snapId ++ ".config"
   downloadConfig snapId dest
   return dest
+
+-- | Extract the package name from a constraint string.
+-- e.g. "aeson ==2.2.3.0" -> "aeson"
+constraintPkgName :: String -> String
+constraintPkgName = takeWhile (/= ' ')
+
+-- | Read all constraint entries from a Stackage cabal.config.
+-- Returns a list of strings like ["aeson ==2.2.3.0", "text ==2.1.1", ...]
+readConfigConstraints :: FilePath -> IO [String]
+readConfigConstraints configPath = do
+  ls <- lines <$> readFile configPath
+  case break (isPrefixOf "constraints:") ls of
+    (_, []) -> return []
+    (_, first:rest) ->
+      let firstEntry  = dropWhile (== ' ') (drop (length "constraints:") first)
+          contLines   = takeWhile startsWithSpace rest
+          allEntries  = firstEntry : map (dropWhile (== ' ')) contLines
+      in return $ filter (not . null) $ map stripComma allEntries
+  where
+    startsWithSpace []    = False
+    startsWithSpace (c:_) = c == ' '
+    stripComma s
+      | not (null s) && last s == ',' = init s
+      | otherwise                     = s

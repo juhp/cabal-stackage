@@ -12,7 +12,7 @@ import           System.Directory (doesDirectoryExist, doesFileExist,
                                    listDirectory, withCurrentDirectory)
 import           System.FilePath  ((</>))
 
-import           Config   (ProjectConfig (..), effectiveSnapshot,
+import           Config   (ProjectConfig (..), effectiveSnapshot, mergeConfigs,
                            perSnapshotConfigFile, readPerSnapshotConfig,
                            readProjectConfig, writeProjectSnapshot)
 import           Project
@@ -78,15 +78,19 @@ main = do
 setupProject :: Bool -> Maybe SnapshotSpec -> IO (FilePath, [String])
 setupProject debug mSpec = do
   spec         <- effectiveSnapshot mSpec
+  baseCfg      <- readProjectConfig
   mPerSnap     <- readPerSnapshotConfig spec
   when (debug && isJust mPerSnap) $
     warning $ "Per-snapshot config: " ++ perSnapshotConfigFile spec
+  let merged          = maybe baseCfg (mergeConfigs baseCfg) mPerSnap
+      userConstraints = pcConstraints merged
+  when debug $ mapM_ (\c -> warning $ "Override: " ++ c) userConstraints
   snapshots    <- getSnapshotsMap
   pinnedId     <- either error' return $ resolveSnapshot snapshots spec
   when debug $ warning $ "Snapshot: " ++ T.unpack (renderSnapshotSpec spec) ++ " -> " ++ pinnedId
   configPath   <- ensureCachedConfig pinnedId
   when debug $ warning $ "Config: " ++ configPath
-  projectFile  <- generateProjectFile configPath
+  projectFile  <- generateProjectFile configPath userConstraints
   when debug $ warning $ "Project file: " ++ projectFile
   compilerArgs <- resolveCompiler debug configPath
   return (projectFile, compilerArgs)
@@ -183,13 +187,16 @@ buildAllCmd debug mNewest mOldest specStrs = do
     mPerSnap <- readPerSnapshotConfig spec
     when (debug && isJust mPerSnap) $
       warning $ "Per-snapshot config: " ++ perSnapshotConfigFile spec
+    let merged          = maybe baseCfg (mergeConfigs baseCfg) mPerSnap
+        userConstraints = pcConstraints merged
+    when debug $ mapM_ (\c -> warning $ "Override: " ++ c) userConstraints
     let specStr = T.unpack (renderSnapshotSpec spec)
     putStrLn $ "\n=== " ++ specStr ++ " ==="
     case resolveSnapshot snapshots spec of
       Left err -> error' err
       Right pinnedId -> do
         configPath   <- ensureCachedConfig pinnedId
-        projectFile  <- generateProjectFile configPath
+        projectFile  <- generateProjectFile configPath userConstraints
         compilerArgs <- resolveCompiler debug configPath
         let projectArg = "--project-file=" ++ projectFile
             allArgs = projectArg : "build" : compilerArgs

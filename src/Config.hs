@@ -19,8 +19,8 @@ import           System.Directory (XdgDirectory (..), doesFileExist,
 import           System.FilePath  ((</>))
 import qualified Data.Text        as T
 
-import           Snapshot         (SnapshotSpec (..), parseSnapshotSpec,
-                                   renderSnapshotSpec)
+import           Snapshot         (SnapshotSpec (..), constraintPkgName,
+                                   parseSnapshotSpec, renderSnapshotSpec)
 
 -- | Per-project config file (commit this to VCS to pin a snapshot)
 projectConfigFile :: String
@@ -30,17 +30,19 @@ projectConfigFile = ".cabal-stackage"
 -- All fields are optional.
 --
 -- Example file:
---   snapshot: lts-24
+--   resolver: lts-24
 --   newest: lts-24
 --   oldest: lts-21
+--   constraints: aeson ==2.1.0.0
 data ProjectConfig = ProjectConfig
-  { pcSnapshot :: Maybe SnapshotSpec  -- ^ snapshot for build/test/etc.
-  , pcNewest   :: Maybe SnapshotSpec  -- ^ newest LTS major for build-all
-  , pcOldest   :: Maybe SnapshotSpec  -- ^ oldest LTS major for build-all
+  { pcSnapshot    :: Maybe SnapshotSpec  -- ^ snapshot for build/test/etc.
+  , pcNewest      :: Maybe SnapshotSpec  -- ^ newest LTS major for build-all
+  , pcOldest      :: Maybe SnapshotSpec  -- ^ oldest LTS major for build-all
+  , pcConstraints :: [String]            -- ^ package constraints overriding Stackage
   } deriving (Show)
 
 emptyProjectConfig :: ProjectConfig
-emptyProjectConfig = ProjectConfig Nothing Nothing Nothing
+emptyProjectConfig = ProjectConfig Nothing Nothing Nothing []
 
 -- | Parse one line into the config, accumulating into an existing config.
 -- Accepts "key: value" pairs and, for backwards compatibility, a bare
@@ -54,10 +56,11 @@ parseConfigLine cfg line =
        (key, ':':rest) ->
          let val = trim rest
          in case trim key of
-              "resolver" -> cfg { pcSnapshot = parseSnapshotSpec val }
-              "newest"   -> cfg { pcNewest   = parseSnapshotSpec val }
-              "oldest"   -> cfg { pcOldest   = parseSnapshotSpec val }
-              _          -> cfg
+              "resolver"    -> cfg { pcSnapshot    = parseSnapshotSpec val }
+              "newest"      -> cfg { pcNewest      = parseSnapshotSpec val }
+              "oldest"      -> cfg { pcOldest      = parseSnapshotSpec val }
+              "constraints" -> cfg { pcConstraints = pcConstraints cfg ++ [val] }
+              _             -> cfg
        -- backwards compat: bare snapshot spec with no key
        _ -> case parseSnapshotSpec s of
               Just spec -> cfg { pcSnapshot = Just spec }
@@ -73,9 +76,10 @@ readProjectConfig = do
 writeProjectConfig :: ProjectConfig -> IO ()
 writeProjectConfig cfg =
   writeFile projectConfigFile $ unlines $
-    [ "snapshot: " ++ T.unpack (renderSnapshotSpec s) | Just s <- [pcSnapshot cfg] ]
-    ++ [ "newest: "   ++ T.unpack (renderSnapshotSpec s) | Just s <- [pcNewest cfg] ]
-    ++ [ "oldest: "   ++ T.unpack (renderSnapshotSpec s) | Just s <- [pcOldest cfg] ]
+    [ "resolver: "     ++ T.unpack (renderSnapshotSpec s) | Just s <- [pcSnapshot cfg] ]
+    ++ [ "newest: "    ++ T.unpack (renderSnapshotSpec s) | Just s <- [pcNewest cfg] ]
+    ++ [ "oldest: "    ++ T.unpack (renderSnapshotSpec s) | Just s <- [pcOldest cfg] ]
+    ++ [ "constraints: " ++ c | c <- pcConstraints cfg ]
 
 -- | Read only the snapshot field from the project config.
 readProjectSnapshot :: IO (Maybe SnapshotSpec)
@@ -140,9 +144,15 @@ readPerSnapshotConfig spec = do
     else return Nothing
 
 -- | Merge two configs: fields from the override take precedence over base.
+-- For constraints, override entries replace base entries for the same package.
 mergeConfigs :: ProjectConfig -> ProjectConfig -> ProjectConfig
 mergeConfigs base override = ProjectConfig
-  { pcSnapshot = pcSnapshot override <|> pcSnapshot base
-  , pcNewest   = pcNewest   override <|> pcNewest   base
-  , pcOldest   = pcOldest   override <|> pcOldest   base
+  { pcSnapshot    = pcSnapshot override <|> pcSnapshot base
+  , pcNewest      = pcNewest   override <|> pcNewest   base
+  , pcOldest      = pcOldest   override <|> pcOldest   base
+  , pcConstraints = mergeConstraints (pcConstraints base) (pcConstraints override)
   }
+  where
+    mergeConstraints bs os =
+      let overridePkgs = map constraintPkgName os
+      in filter (\c -> constraintPkgName c `notElem` overridePkgs) bs ++ os

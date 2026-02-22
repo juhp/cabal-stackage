@@ -102,6 +102,25 @@ oldest:   lts-21
 when no explicit snapshot list is given (see below). They are the equivalent of
 the `newest`/`oldest` fields in stack-all's `.stack-all` file.
 
+### Package version overrides
+
+To use a different version of a package than what Stackage pins, add one or
+more `constraints:` lines to `.cabal-stackage`:
+
+```
+resolver: lts-24
+constraints: aeson ==2.1.0.0
+constraints: text >=2.1
+```
+
+cabal-stackage removes the Stackage-pinned constraint for each overridden
+package and adds yours in its place before running cabal. This is necessary
+because cabal treats constraints conjunctively — you cannot simply add a
+second constraint for the same package on top of Stackage's.
+
+Constraints can also be placed in per-snapshot config files (see below) to
+apply only to specific snapshots.
+
 ### Per-snapshot config files
 
 For `build-all` (and for single-snapshot builds with an explicit `--snapshot`),
@@ -122,19 +141,21 @@ the filename. Fields in the per-snapshot file take precedence over the base
 This is the equivalent of stack-all's `stack-nightly.yaml` / `stack-lts23.yaml`
 per-snapshot overrides. Commit these files alongside `.cabal-stackage`.
 
-Example: allow nightly to use a newer snapshot than the project default:
+A common use case is pinning a package to a different version for a specific
+snapshot only:
 
 ```
-# .cabal-stackage.nightly
-resolver: nightly
+# .cabal-stackage.nightly  -- use a pre-release version of a package on nightly
+constraints: some-package ==1.3.0.0
 ```
 
-Or to build LTS 21 with a tighter oldest bound:
+```
+# .cabal-stackage.lts21  -- an older snapshot needs a compat shim
+constraints: some-package ==1.0.0.0
+```
 
-```
-# .cabal-stackage.lts21
-oldest: lts-21
-```
+Constraints in a per-snapshot file replace (not accumulate with) any
+constraint for the same package in the base `.cabal-stackage`.
 
 ## build-all
 
@@ -209,3 +230,4 @@ Requires `cabal-install` to be on your `PATH`.
 | cabal.project support | Limited | Full |
 | build-all / multi-snapshot | stack-all (separate tool) | Built-in |
 | Per-snapshot config overrides | `stack-lts23.yaml` etc. | `.cabal-stackage.lts23` etc. |
+| Package version overrides | `extra-deps` in stack.yaml | `constraints:` in `.cabal-stackage` |
