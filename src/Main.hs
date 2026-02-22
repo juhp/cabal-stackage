@@ -53,6 +53,7 @@ main = do
           ]
       where
         debugOpt :: Parser Bool
+        -- FIXME? drop Long for backcompat
         debugOpt = switchLongWith "debug" "Show snapshot, compiler, and cabal command"
 
         snapshotOpt :: Parser (Maybe SnapshotSpec)
