@@ -221,6 +221,7 @@ defaultLtsSpecs :: SnapshotsMap -> [SnapshotSpec]
 defaultLtsSpecs snapshots =
   NightlyLatest :
   [ LtsMajor n
-  | n <- [64,63..16]
+  -- FIXME hardcoding
+  | n <- [64,63..18]
   , Map.member (T.pack $ "lts-" ++ show n) snapshots
   ]
