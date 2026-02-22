@@ -185,14 +185,14 @@ buildAllCmd debug mNewest mOldest specStrs = do
       return (applyBounds newest oldest (defaultLtsSpecs snapshots))
     else mapM parseSpec specStrs
   forM_ specs $ \spec -> do
+    let specStr = T.unpack (renderSnapshotSpec spec)
+    putStrLn $ "\n=== " ++ specStr ++ " ==="
     mPerSnap <- readPerSnapshotConfig spec
     when (debug && isJust mPerSnap) $
       warning $ "Per-snapshot config: " ++ perSnapshotConfigFile spec
     let merged          = maybe baseCfg (mergeConfigs baseCfg) mPerSnap
         userConstraints = pcConstraints merged
     when debug $ mapM_ (\c -> warning $ "Override: " ++ c) userConstraints
-    let specStr = T.unpack (renderSnapshotSpec spec)
-    putStrLn $ "\n=== " ++ specStr ++ " ==="
     case resolveSnapshot snapshots spec of
       Left err -> error' err
       Right pinnedId -> do
