@@ -131,7 +131,7 @@ ensureCachedConfig snapId = do
 readCompilerFromConfig :: FilePath -> IO (Maybe String)
 readCompilerFromConfig configPath = do
   ls <- lines <$> readFile configPath
-  let mwithcompiler = listToMaybe $ dropWhile ("--" `isPrefixOf`) ls
+  let mwithcompiler = listToMaybe $ dropWhile (\l -> null l || "--" `isPrefixOf` l) ls
   return $ stripPrefix "with-compiler: " =<< mwithcompiler
 
 -- | Re-download the cabal.config for a pinned snapshot ID unconditionally.
