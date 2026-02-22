@@ -15,6 +15,7 @@ import           System.FilePath  ((</>))
 import           Config   (ProjectConfig (..), effectiveSnapshot, mergeConfigs,
                            perSnapshotConfigFile, readPerSnapshotConfig,
                            readProjectConfig, writeProjectSnapshot)
+import qualified Paths_cabal_stackage as Paths
 import           Project
 import           Snapshot
 
@@ -26,7 +27,7 @@ main = do
     Nothing -> error' "Failed to find cabal project topdir"
     Just topdir ->
       withCurrentDirectory topdir $
-      simpleCmdArgs Nothing "cabal-stackage"
+      simpleCmdArgs (Just Paths.version) "cabal-stackage"
         "Stack-like cabal-install wrapper using Stackage snapshots" $
         subcommands
           [ Subcommand "build"     "Build the project" $

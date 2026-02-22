@@ -17,6 +17,7 @@ executable cabal-stackage
   main-is:          Main.hs
   other-modules:
     Config
+    Paths_cabal_stackage
     Project
     Snapshot
   build-depends:
