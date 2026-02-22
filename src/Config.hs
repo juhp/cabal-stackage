@@ -6,8 +6,12 @@ module Config
   , writeProjectSnapshot
   , readGlobalSnapshot
   , effectiveSnapshot
+  , readPerSnapshotConfig
+  , perSnapshotConfigFile
+  , mergeConfigs
   ) where
 
+import           Control.Applicative ((<|>))
 import           Data.List.Extra  (trim)
 import           Data.Maybe       (fromMaybe, listToMaybe)
 import           System.Directory (XdgDirectory (..), doesFileExist,
@@ -109,3 +113,36 @@ effectiveSnapshot Nothing = do
     Just spec -> return spec
     Nothing   ->
       fromMaybe LtsLatest <$> readGlobalSnapshot
+
+-- | Derive the per-snapshot config filename suffix from a SnapshotSpec.
+-- LtsMajor 24 -> "lts24", NightlyLatest -> "nightly", LtsExact 24 31 -> "lts24.31"
+-- NightlyDate d -> "nightly-" ++ d
+perSnapshotSuffix :: SnapshotSpec -> String
+perSnapshotSuffix LtsLatest       = "lts"
+perSnapshotSuffix (LtsMajor n)    = "lts" ++ show n
+perSnapshotSuffix (LtsExact m n)  = "lts" ++ show m ++ "." ++ show n
+perSnapshotSuffix NightlyLatest   = "nightly"
+perSnapshotSuffix (NightlyDate d) = "nightly-" ++ d
+
+-- | The per-snapshot config file path for a given spec,
+-- e.g. ".cabal-stackage.lts24" or ".cabal-stackage.nightly".
+perSnapshotConfigFile :: SnapshotSpec -> FilePath
+perSnapshotConfigFile spec = projectConfigFile ++ "." ++ perSnapshotSuffix spec
+
+-- | Read a per-snapshot config file for the given spec, if it exists.
+-- Returns Nothing if no such file is present.
+readPerSnapshotConfig :: SnapshotSpec -> IO (Maybe ProjectConfig)
+readPerSnapshotConfig spec = do
+  let path = perSnapshotConfigFile spec
+  exists <- doesFileExist path
+  if exists
+    then Just . foldl parseConfigLine emptyProjectConfig . lines <$> readFile path
+    else return Nothing
+
+-- | Merge two configs: fields from the override take precedence over base.
+mergeConfigs :: ProjectConfig -> ProjectConfig -> ProjectConfig
+mergeConfigs base override = ProjectConfig
+  { pcSnapshot = pcSnapshot override <|> pcSnapshot base
+  , pcNewest   = pcNewest   override <|> pcNewest   base
+  , pcOldest   = pcOldest   override <|> pcOldest   base
+  }

@@ -2,7 +2,7 @@ module Main (main) where
 
 import           Control.Monad    (filterM, forM_, when)
 import           Data.List        (isSuffixOf)
-import           Data.Maybe       (listToMaybe)
+import           Data.Maybe       (isJust, listToMaybe)
 import qualified Data.Map.Strict  as Map
 import qualified Data.Text        as T
 import           SimpleCmd        (cmd_, error', needProgram, warning)
@@ -12,8 +12,9 @@ import           System.Directory (doesDirectoryExist, doesFileExist,
                                    listDirectory, withCurrentDirectory)
 import           System.FilePath  ((</>))
 
-import           Config   (ProjectConfig (..), effectiveSnapshot, readProjectConfig,
-                           writeProjectSnapshot)
+import           Config   (ProjectConfig (..), effectiveSnapshot,
+                           perSnapshotConfigFile, readPerSnapshotConfig,
+                           readProjectConfig, writeProjectSnapshot)
 import           Project
 import           Snapshot
 
@@ -77,6 +78,9 @@ main = do
 setupProject :: Bool -> Maybe SnapshotSpec -> IO (FilePath, [String])
 setupProject debug mSpec = do
   spec         <- effectiveSnapshot mSpec
+  mPerSnap     <- readPerSnapshotConfig spec
+  when (debug && isJust mPerSnap) $
+    warning $ "Per-snapshot config: " ++ perSnapshotConfigFile spec
   snapshots    <- getSnapshotsMap
   pinnedId     <- either error' return $ resolveSnapshot snapshots spec
   when debug $ warning $ "Snapshot: " ++ T.unpack (renderSnapshotSpec spec) ++ " -> " ++ pinnedId
@@ -168,14 +172,17 @@ snapshotCmd (Just specStr) = do
 buildAllCmd :: Bool -> Maybe SnapshotSpec -> Maybe SnapshotSpec -> [String] -> IO ()
 buildAllCmd debug mNewest mOldest specStrs = do
   snapshots <- getSnapshotsMap
+  baseCfg <- readProjectConfig
   specs <- if null specStrs
     then do
-      cfg <- readProjectConfig
-      let newest = mNewest <|> pcNewest cfg
-          oldest = mOldest <|> pcOldest cfg
+      let newest = mNewest <|> pcNewest baseCfg
+          oldest = mOldest <|> pcOldest baseCfg
       return (applyBounds newest oldest (defaultLtsSpecs snapshots))
     else mapM parseSpec specStrs
   forM_ specs $ \spec -> do
+    mPerSnap <- readPerSnapshotConfig spec
+    when (debug && isJust mPerSnap) $
+      warning $ "Per-snapshot config: " ++ perSnapshotConfigFile spec
     let specStr = T.unpack (renderSnapshotSpec spec)
     putStrLn $ "\n=== " ++ specStr ++ " ==="
     case resolveSnapshot snapshots spec of

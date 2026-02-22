@@ -84,7 +84,7 @@ This writes (or updates) a `.cabal-stackage` file in the project root. Commit
 this file to version control — it is the equivalent of Stack's `resolver:`
 field in `stack.yaml`.
 
-A global fallback can be set in `~/.config/cabal-stackage/snapshot`.
+A global fallback can be set in `~/.config/cabal-stackage/resolver`.
 
 Priority order: `--snapshot` flag > `.cabal-stackage` > global config > `lts`.
 
@@ -93,7 +93,7 @@ Priority order: `--snapshot` flag > `.cabal-stackage` > global config > `lts`.
 The `.cabal-stackage` file supports three optional fields:
 
 ```
-snapshot: lts-24
+resolver: lts-24
 newest:   lts-24
 oldest:   lts-21
 ```
@@ -101,6 +101,40 @@ oldest:   lts-21
 `newest` and `oldest` set the LTS major version bounds used by `build-all`
 when no explicit snapshot list is given (see below). They are the equivalent of
 the `newest`/`oldest` fields in stack-all's `.stack-all` file.
+
+### Per-snapshot config files
+
+For `build-all` (and for single-snapshot builds with an explicit `--snapshot`),
+cabal-stackage also looks for a per-snapshot config file alongside `.cabal-stackage`.
+The filename is `.cabal-stackage.<suffix>` where the suffix matches the snapshot:
+
+| File | Applies to |
+|---|---|
+| `.cabal-stackage.nightly` | `nightly` |
+| `.cabal-stackage.lts24` | `lts-24` (any minor) |
+| `.cabal-stackage.lts24.31` | `lts-24.31` (exact) |
+
+These files use the same key-value format as `.cabal-stackage`. The `resolver:`
+field is optional — it can be omitted since the snapshot is already implied by
+the filename. Fields in the per-snapshot file take precedence over the base
+`.cabal-stackage` file.
+
+This is the equivalent of stack-all's `stack-nightly.yaml` / `stack-lts23.yaml`
+per-snapshot overrides. Commit these files alongside `.cabal-stackage`.
+
+Example: allow nightly to use a newer snapshot than the project default:
+
+```
+# .cabal-stackage.nightly
+resolver: nightly
+```
+
+Or to build LTS 21 with a tighter oldest bound:
+
+```
+# .cabal-stackage.lts21
+oldest: lts-21
+```
 
 ## build-all
 
@@ -168,9 +202,10 @@ Requires `cabal-install` to be on your `PATH`.
 | | Stack | cabal-stackage |
 |---|---|---|
 | Solver | Custom (Stack's own) | cabal-install |
-| Snapshot pinning | `stack.yaml` resolver | `.cabal-stackage` |
+| Snapshot pinning | `stack.yaml` `resolver:` | `.cabal-stackage` `resolver:` |
 | Latest minor auto-update | No (explicit bump needed) | Yes (via snapshots.json) |
 | Uses system GHC | Optional | Yes |
 | Stack-installed GHC fallback | Yes | Yes |
 | cabal.project support | Limited | Full |
 | build-all / multi-snapshot | stack-all (separate tool) | Built-in |
+| Per-snapshot config overrides | `stack-lts23.yaml` etc. | `.cabal-stackage.lts23` etc. |
