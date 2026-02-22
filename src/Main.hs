@@ -90,8 +90,7 @@ setupProject debug mSpec = do
   when debug $ warning $ "Snapshot: " ++ T.unpack (renderSnapshotSpec spec) ++ " -> " ++ pinnedId
   configPath   <- ensureCachedConfig pinnedId
   when debug $ warning $ "Config: " ++ configPath
-  projectFile  <- generateProjectFile configPath userConstraints
-  when debug $ warning $ "Project file: " ++ projectFile
+  projectFile  <- generateProjectFile debug configPath userConstraints
   compilerArgs <- resolveCompiler debug configPath
   return (projectFile, compilerArgs)
 
@@ -197,7 +196,7 @@ buildAllCmd debug mNewest mOldest specStrs = do
       Left err -> error' err
       Right pinnedId -> do
         configPath   <- ensureCachedConfig pinnedId
-        projectFile  <- generateProjectFile configPath userConstraints
+        projectFile  <- generateProjectFile debug configPath userConstraints
         compilerArgs <- resolveCompiler debug configPath
         let projectArg = "--project-file=" ++ projectFile
             allArgs = projectArg : "build" : compilerArgs
