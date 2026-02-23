@@ -1,5 +1,7 @@
 module Config
   ( ProjectConfig (..)
+  , emptyProjectConfig
+  , parseConfigLine
   , readProjectConfig
   , writeProjectConfig
   , readProjectSnapshot
@@ -8,6 +10,7 @@ module Config
   , effectiveSnapshot
   , readPerSnapshotConfig
   , perSnapshotConfigFile
+  , perSnapshotSuffix
   , mergeConfigs
   ) where
 
@@ -39,7 +42,7 @@ data ProjectConfig = ProjectConfig
   , pcNewest      :: Maybe SnapshotSpec  -- ^ newest LTS major for build-all
   , pcOldest      :: Maybe SnapshotSpec  -- ^ oldest LTS major for build-all
   , pcConstraints :: [String]            -- ^ package constraints overriding Stackage
-  } deriving (Show)
+  } deriving (Eq, Show)
 
 emptyProjectConfig :: ProjectConfig
 emptyProjectConfig = ProjectConfig Nothing Nothing Nothing []

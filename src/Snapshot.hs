@@ -10,6 +10,7 @@ module Snapshot
   , readCompilerFromConfig
   , constraintPkgName
   , readConfigConstraints
+  , applyBounds
   ) where
 
 import           Control.Monad              (unless)
@@ -166,3 +167,11 @@ readConfigConstraints configPath = do
     stripComma s
       | not (null s) && last s == ',' = init s
       | otherwise                     = s
+
+-- | Filter a spec list to those within the given newest/oldest LTS major bounds.
+-- Bounds are extracted from any SnapshotSpec carrying an LTS major number.
+applyBounds :: Maybe SnapshotSpec -> Maybe SnapshotSpec -> [SnapshotSpec] -> [SnapshotSpec]
+applyBounds mNewest mOldest = filter inRange
+  where
+    inRange spec =
+      maybe True (spec <=) mNewest && maybe True (spec >=) mOldest

@@ -17,7 +17,11 @@ import           Config   (ProjectConfig (..), effectiveSnapshot, mergeConfigs,
                            readProjectConfig, writeProjectSnapshot)
 import qualified Paths_cabal_stackage as Paths
 import           Project
-import           Snapshot
+import           Snapshot (SnapshotSpec (..), SnapshotsMap,
+                           applyBounds, ensureCachedConfig,
+                           forceRefreshConfig, getSnapshotsMap,
+                           parseSnapshotSpec, readCompilerFromConfig,
+                           renderSnapshotSpec, resolveSnapshot)
 
 main :: IO ()
 main = do
@@ -207,14 +211,6 @@ buildAllCmd debug mNewest mOldest specStrs = do
   where
     parseSpec s =
       maybe (error' $ "Invalid snapshot spec: " ++ s) return (parseSnapshotSpec s)
-
--- | Filter a spec list to those within the given newest/oldest LTS major bounds.
--- Bounds are extracted from any SnapshotSpec carrying an LTS major number.
-applyBounds :: Maybe SnapshotSpec -> Maybe SnapshotSpec -> [SnapshotSpec] -> [SnapshotSpec]
-applyBounds mNewest mOldest = filter inRange
-  where
-    inRange spec =
-      maybe True (spec <=) mNewest && maybe True (spec >=) mOldest
 
 -- | Nightly followed by LTS majors in descending order down to lts-16.
 defaultLtsSpecs :: SnapshotsMap -> [SnapshotSpec]

@@ -35,3 +35,28 @@ executable cabal-stackage
   hs-source-dirs:   src
   default-language: Haskell2010
   ghc-options:      -Wall
+
+test-suite cabal-stackage-tests
+  type:             exitcode-stdio-1.0
+  main-is:          Tests.hs
+  hs-source-dirs:   tests, src
+  other-modules:
+    Config
+    Project
+    Snapshot
+  build-depends:
+      base             < 5
+    , bytestring
+    , cached-json-file
+    , containers
+    , directory
+    , extra
+    , filepath
+    , http-conduit
+    , simple-cmd       >= 0.2
+    , simple-cmd-args  >= 0.1.8
+    , tasty
+    , tasty-hunit
+    , text
+  default-language: Haskell2010
+  ghc-options:      -Wall

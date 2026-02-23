@@ -1,6 +1,7 @@
 module Project
   ( findProjectRoot
   , generateProjectFile
+  , renderConstraintsBlock
   , runCabal
   ) where
 
