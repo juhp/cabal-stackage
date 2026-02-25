@@ -73,12 +73,12 @@ parseSnapshotSpec s =
     Nothing ->
       NightlyDate <$> stripPrefix "nightly-" s
 
-renderSnapshotSpec :: SnapshotSpec -> Text
-renderSnapshotSpec LtsLatest       = T.pack "lts"
-renderSnapshotSpec (LtsMajor n)    = T.pack $ "lts-" ++ show n
-renderSnapshotSpec (LtsExact m n)  = T.pack $ "lts-" ++ show m ++ "." ++ show n
-renderSnapshotSpec NightlyLatest   = T.pack "nightly"
-renderSnapshotSpec (NightlyDate d) = T.pack $ "nightly-" ++ d
+renderSnapshotSpec :: SnapshotSpec -> String
+renderSnapshotSpec LtsLatest       = "lts"
+renderSnapshotSpec (LtsMajor n)    = "lts-" ++ show n
+renderSnapshotSpec (LtsExact m n)  = "lts-" ++ show m ++ "." ++ show n
+renderSnapshotSpec NightlyLatest   =  "nightly"
+renderSnapshotSpec (NightlyDate d) =  "nightly-" ++ d
 
 -- | Decoded snapshots.json: alias -> pinned snapshot id
 -- e.g. "lts" -> "lts-24.31", "lts-24" -> "lts-24.31"
@@ -99,9 +99,9 @@ resolveSnapshot _ (LtsExact m n)  = Right $ "lts-" ++ show m ++ "." ++ show n
 resolveSnapshot _ (NightlyDate d) = Right $ "nightly-" ++ d
 resolveSnapshot snapshots spec =
   let key = renderSnapshotSpec spec
-  in case Map.lookup key snapshots of
+  in case Map.lookup (T.pack key) snapshots of
     Just pinned -> Right (T.unpack pinned)
-    Nothing     -> Left $ "Snapshot not found in snapshots.json: " ++ T.unpack key
+    Nothing     -> Left $ "Snapshot not found in snapshots.json: " ++ key
 
 cacheDir :: IO FilePath
 cacheDir = getXdgDirectory XdgCache "cabal-stackage"

@@ -93,7 +93,7 @@ setupProject debug mSpec = do
   when debug $ mapM_ (\c -> warning $ "Override: " ++ c) userConstraints
   snapshots    <- getSnapshotsMap
   pinnedId     <- either error' return $ resolveSnapshot snapshots spec
-  when debug $ warning $ "Snapshot: " ++ T.unpack (renderSnapshotSpec spec) ++ " -> " ++ pinnedId
+  when debug $ warning $ "Snapshot: " ++ renderSnapshotSpec spec ++ " -> " ++ pinnedId
   configPath   <- ensureCachedConfig pinnedId
   when debug $ warning $ "Config: " ++ configPath
   projectFile  <- generateProjectFile debug configPath userConstraints
@@ -176,7 +176,7 @@ snapshotCmd Nothing = do
   snapshots <- getSnapshotsMap
   case resolveSnapshot snapshots spec of
     Right pinnedId -> putStrLn $ "Current snapshot: " ++ pinnedId
-    Left _         -> putStrLn $ "Current snapshot: " ++ T.unpack (renderSnapshotSpec spec)
+    Left _         -> putStrLn $ "Current snapshot: " ++ renderSnapshotSpec spec
 snapshotCmd (Just specStr) = do
   case parseSnapshotSpec specStr of
     Nothing   -> error' $ "Invalid snapshot spec: " ++ specStr
@@ -195,7 +195,7 @@ buildAllCmd debug mNewest mOldest specStrs = do
       return (applyBounds newest oldest (defaultLtsSpecs snapshots))
     else mapM parseSpec specStrs
   forM_ specs $ \spec -> do
-    let specStr = T.unpack (renderSnapshotSpec spec)
+    let specStr = renderSnapshotSpec spec
     putStrLn $ "\n=== " ++ specStr ++ " ==="
     mPerSnap <- readPerSnapshotConfig spec
     when (debug && isJust mPerSnap) $

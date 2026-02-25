@@ -20,7 +20,6 @@ import           Data.Maybe       (fromMaybe, listToMaybe)
 import           System.Directory (XdgDirectory (..), doesFileExist,
                                    getXdgDirectory)
 import           System.FilePath  ((</>))
-import qualified Data.Text        as T
 
 import           Snapshot         (SnapshotSpec (..), constraintPkgName,
                                    parseSnapshotSpec, renderSnapshotSpec)
@@ -79,9 +78,9 @@ readProjectConfig = do
 writeProjectConfig :: ProjectConfig -> IO ()
 writeProjectConfig cfg =
   writeFile projectConfigFile $ unlines $
-    [ "resolver: "     ++ T.unpack (renderSnapshotSpec s) | Just s <- [pcSnapshot cfg] ]
-    ++ [ "newest: "    ++ T.unpack (renderSnapshotSpec s) | Just s <- [pcNewest cfg] ]
-    ++ [ "oldest: "    ++ T.unpack (renderSnapshotSpec s) | Just s <- [pcOldest cfg] ]
+    [ "resolver: "     ++ renderSnapshotSpec s | Just s <- [pcSnapshot cfg] ]
+    ++ [ "newest: "    ++ renderSnapshotSpec s | Just s <- [pcNewest cfg] ]
+    ++ [ "oldest: "    ++ renderSnapshotSpec s | Just s <- [pcOldest cfg] ]
     ++ [ "constraints: " ++ c | c <- pcConstraints cfg ]
 
 -- | Read only the snapshot field from the project config.
