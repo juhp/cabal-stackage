@@ -84,13 +84,11 @@ renderSnapshotSpec (NightlyDate d) =  "nightly-" ++ d
 -- e.g. "lts" -> "lts-24.31", "lts-24" -> "lts-24.31"
 type SnapshotsMap = Map Text Text
 
-snapshotsJsonUrl :: String
-snapshotsJsonUrl = "https://www.stackage.org/download/snapshots.json"
-
--- | Fetch snapshots.json, cached for 60 minutes
+-- | Fetch snapshots.json, cached for 200 minutes
 getSnapshotsMap :: IO SnapshotsMap
 getSnapshotsMap =
-  getCachedJSON "stackage-snapshots" "snapshots.json" snapshotsJsonUrl 200
+  let url = "https://www.stackage.org/download/snapshots.json"
+  in getCachedJSON "stackage-snapshots" "snapshots.json" url 200
 
 -- | Resolve a snapshot spec to a pinned snapshot ID (e.g. "lts-24.31").
 -- Exact specs (LtsExact, NightlyDate) are returned directly without a lookup.
@@ -168,9 +166,9 @@ readConfigConstraints configPath = do
       | not (null s) && last s == ',' = init s
       | otherwise                     = s
 
--- | Filter a spec list to those within the given newest/oldest LTS major bounds.
--- Bounds are extracted from any SnapshotSpec carrying an LTS major number.
-applyBounds :: Maybe SnapshotSpec -> Maybe SnapshotSpec -> [SnapshotSpec] -> [SnapshotSpec]
+-- | Filter snapshots within given newest/oldest LTS major bounds.
+applyBounds :: Maybe SnapshotSpec -> Maybe SnapshotSpec -> [SnapshotSpec]
+            -> [SnapshotSpec]
 applyBounds mNewest mOldest = filter inRange
   where
     inRange spec =
