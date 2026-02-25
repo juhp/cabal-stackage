@@ -3,8 +3,6 @@ module Main (main) where
 import           Control.Monad    (filterM, forM_, when)
 import           Data.List        (isSuffixOf)
 import           Data.Maybe       (isJust, listToMaybe)
-import qualified Data.Map.Strict  as Map
-import qualified Data.Text        as T
 import           SimpleCmd        (cmd_, error', needProgram, warning)
 import           SimpleCmdArgs
 import           System.Directory (doesDirectoryExist, doesFileExist,
@@ -19,7 +17,7 @@ import qualified Paths_cabal_stackage as Paths
 import           Project (findProjectRoot, generateProjectFile)
 import           Snapshot (SnapshotSpec (..), SnapshotsMap,
                            applyBounds, ensureCachedConfig,
-                           forceRefreshConfig, getSnapshotsMap,
+                           forceRefreshConfig, getMajorVers, getSnapshotsMap,
                            parseSnapshotSpec, readCompilerFromConfig,
                            renderSnapshotSpec, resolveSnapshot)
 
@@ -216,8 +214,4 @@ buildAllCmd debug mNewest mOldest specStrs = do
 defaultLtsSpecs :: SnapshotsMap -> [SnapshotSpec]
 defaultLtsSpecs snapshots =
   NightlyLatest :
-  [ LtsMajor n
-  -- FIXME hardcoding
-  | n <- [64,63..18]
-  , Map.member (T.pack $ "lts-" ++ show n) snapshots
-  ]
+  applyBounds Nothing (Just $ LtsMajor 18) (getMajorVers snapshots)

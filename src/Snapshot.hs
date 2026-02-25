@@ -11,15 +11,17 @@ module Snapshot
   , constraintPkgName
   , readConfigConstraints
   , applyBounds
+  , getMajorVers
   ) where
 
 import           Control.Monad              (unless)
 import qualified Data.ByteString            as B
 import           Control.Applicative        ((<|>))
-import           Data.List                  (isPrefixOf, stripPrefix)
+import           Data.List                  (isPrefixOf, sortBy, stripPrefix)
 import           Data.Map.Strict            (Map)
-import           Data.Maybe                 (listToMaybe)
+import           Data.Maybe                 (listToMaybe, mapMaybe)
 import qualified Data.Map.Strict            as Map
+import           Data.Ord                   (comparing, Down(Down))
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import           Network.HTTP.Simple        (getResponseBody, httpBS,
@@ -38,6 +40,10 @@ data SnapshotSpec
   | NightlyLatest
   | NightlyDate String
   deriving (Show, Eq)
+
+isLtsMajor :: SnapshotSpec -> Bool
+isLtsMajor (LtsMajor _) = True
+isLtsMajor _ = False
 
 instance Ord SnapshotSpec where
   compare s1 s2 =
@@ -173,3 +179,9 @@ applyBounds mNewest mOldest = filter inRange
   where
     inRange spec =
       maybe True (spec <=) mNewest && maybe True (spec >=) mOldest
+
+getMajorVers :: SnapshotsMap -> [SnapshotSpec]
+getMajorVers snapshots =
+  sortBy (comparing Down) $
+  filter isLtsMajor $
+  mapMaybe (parseSnapshotSpec . T.unpack) $ Map.keys snapshots
