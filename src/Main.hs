@@ -35,19 +35,19 @@ main = do
         "Stack-like cabal-install wrapper using Stackage snapshots" $
         subcommands
           [ Subcommand "build"     "Build the project" $
-              passthroughCmd "build" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
+              runCmd "build" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
           , Subcommand "install"   "Install the project" $
-              passthroughCmd "install" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
+              runCmd "install" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
           , Subcommand "test"      "Test the project" $
-              passthroughCmd "test" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
+              runCmd "test" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
           , Subcommand "run"       "Run an executable" $
-              passthroughCmd "run" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
+              runCmd "run" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
           , Subcommand "repl"      "Open a REPL" $
-              passthroughCmd "repl" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
+              runCmd "repl" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
           , Subcommand "haddock"   "Build documentation" $
-              passthroughCmd "haddock" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
+              runCmd "haddock" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
           , Subcommand "clean"     "Clean build artifacts" $
-              passthroughCmd "clean" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
+              runCmd "clean" <$> debugOpt <*> snapshotOpt <*> many (strArg "ARGS")
           , Subcommand "refresh"   "Force re-download of snapshot config" $
               refreshCmd <$> snapshotOpt
           , Subcommand "snapshot"  "Show or set the current snapshot resolver" $
@@ -149,8 +149,8 @@ findStackGhc compiler = do
       listToMaybe <$> filterM doesFileExist
         [ dir </> "bin" </> "ghc" | dir <- ghcDirs ]
 
-passthroughCmd :: String -> Bool -> Maybe SnapshotSpec -> [String] -> IO ()
-passthroughCmd cabalCmd debug mSpec extraArgs = do
+runCmd :: String -> Bool -> Maybe SnapshotSpec -> [String] -> IO ()
+runCmd cabalCmd debug mSpec extraArgs = do
   (projectFile, compilerArgs) <- setupProject debug mSpec
   let allArgs = cabalCmd : compilerArgs ++ extraArgs
       projectArg = "--project-file=" ++ projectFile
