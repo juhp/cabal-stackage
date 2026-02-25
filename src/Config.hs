@@ -134,7 +134,7 @@ perSnapshotSuffix (NightlyDate d) = "nightly-" ++ d
 -- | The per-snapshot config file path for a given spec,
 -- e.g. ".cabal-stackage.lts24" or ".cabal-stackage.nightly".
 perSnapshotConfigFile :: SnapshotSpec -> FilePath
-perSnapshotConfigFile spec = projectConfigFile ++ "." ++ perSnapshotSuffix spec
+perSnapshotConfigFile spec = projectConfigFile ++ '-' : perSnapshotSuffix spec
 
 -- | Read a per-snapshot config file for the given spec, if it exists.
 -- Returns Nothing if no such file is present.
