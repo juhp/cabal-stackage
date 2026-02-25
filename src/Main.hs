@@ -154,13 +154,8 @@ runCmd cabalCmd debug mSpec extraArgs = do
   (projectFile, compilerArgs) <- setupProject debug mSpec
   let allArgs = cabalCmd : compilerArgs ++ extraArgs
       projectArg = "--project-file=" ++ projectFile
-  when debug $ warning $ "cabal " ++ unwords (projectArg : allArgs)
-  runCabal projectFile allArgs
-  where
-    -- | Run cabal with the given project file and arguments.
-    runCabal :: FilePath -> [String] -> IO ()
-    runCabal projectFile args =
-      cmd_ "cabal" (("--project-file=" ++ projectFile) : args)
+  when debug $ warning $ unwords ("cabal" : projectArg : allArgs)
+  cmd_ "cabal" $ ("--project-file=" ++ projectFile) : allArgs
 
 refreshCmd :: Maybe SnapshotSpec -> IO ()
 refreshCmd mSpec = do
