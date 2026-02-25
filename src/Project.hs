@@ -1,15 +1,13 @@
 module Project
   ( findProjectRoot
   , generateProjectFile
-  , renderConstraintsBlock
-  , runCabal
   ) where
 
 import           Control.Monad    (when)
 import           System.Directory (doesFileExist, getCurrentDirectory,
                                    listDirectory)
 import           System.FilePath  (takeDirectory, takeExtension, (</>))
-import           SimpleCmd        (cmd_, warning)
+import           SimpleCmd        (warning)
 
 import           Snapshot         (constraintPkgName, readCompilerFromConfig,
                                    readConfigConstraints)
@@ -95,8 +93,3 @@ renderConstraintsBlock (c:cs) =
     go []     = []
     go [x]    = [pad ++ x]
     go (x:xs) = (pad ++ x ++ ",") : go xs
-
--- | Run cabal with the given project file and arguments.
-runCabal :: FilePath -> [String] -> IO ()
-runCabal projectFile args =
-  cmd_ "cabal" (("--project-file=" ++ projectFile) : args)

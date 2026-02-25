@@ -16,7 +16,7 @@ import           Config   (ProjectConfig (..), effectiveSnapshot, mergeConfigs,
                            perSnapshotConfigFile, readPerSnapshotConfig,
                            readProjectConfig, writeProjectSnapshot)
 import qualified Paths_cabal_stackage as Paths
-import           Project
+import           Project (findProjectRoot, generateProjectFile)
 import           Snapshot (SnapshotSpec (..), SnapshotsMap,
                            applyBounds, ensureCachedConfig,
                            forceRefreshConfig, getSnapshotsMap,
@@ -156,6 +156,11 @@ passthroughCmd cabalCmd debug mSpec extraArgs = do
       projectArg = "--project-file=" ++ projectFile
   when debug $ warning $ "cabal " ++ unwords (projectArg : allArgs)
   runCabal projectFile allArgs
+  where
+    -- | Run cabal with the given project file and arguments.
+    runCabal :: FilePath -> [String] -> IO ()
+    runCabal projectFile args =
+      cmd_ "cabal" (("--project-file=" ++ projectFile) : args)
 
 refreshCmd :: Maybe SnapshotSpec -> IO ()
 refreshCmd mSpec = do
