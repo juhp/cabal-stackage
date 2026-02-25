@@ -35,10 +35,12 @@ findProjectRoot = getCurrentDirectory >>= go
 
 hasCabalFiles :: FilePath -> IO Bool
 hasCabalFiles dir = do
-  entries    <- listDirectory dir
   hasProject <- doesFileExist (dir </> "cabal.project")
-  let hasDotCabal = any ((== ".cabal") . takeExtension) entries
-  return (hasProject || hasDotCabal)
+  if hasProject
+    then return True
+    else do
+    entries <- listDirectory dir
+    return $ any ((== ".cabal") . takeExtension) entries
 
 -- | Generate cabal-stackage.project (and cabal-stackage.config when needed).
 --
